@@ -1,12 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
-#####################################################
-# Script for blurring and reconstructing and image  #
-#                                                   #
-# Author: Merlin Carson                             #
-# Date: Oct-9-2019                                  #
-#####################################################
+###################################################
+# Script for blurring and reconstructing an image #
+#                                                 #
+# Author: Merlin Carson                           #
+# Date: Oct-9-2019                                #
+###################################################
 
 import sys
 import cv2
