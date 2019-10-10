@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
+
+#####################################################
+# Script for blurring and reconstructing and image  #
+#                                                   #
+# Author: Merlin Carson                             #
+# Date: Oct-9-2019                                  #
+#####################################################
+
 import sys
 import cv2
 import numpy as np
@@ -7,36 +15,12 @@ from scipy.sparse import diags
 import matplotlib.pyplot as plt
 
 
-def show_img(img):
-   
-    print(f'Image is {img.shape}')
-    cv2.imshow("img", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-def diffusion_matrix(L, n, m):
-
-    # make matrix tridiagonal 
-    # 1-2*L as diagonal and L above and below diagonal
-    return diags([L, 1-2*L, L], [-1, 0, 1], shape = (n,m)).toarray()
-   
-def noise_matrix(n, m, mean=0, stdev=1):
-    return  0.01 * np.random.normal(size=(n,m))
-
-
-def blur(X, B, k, enoise):
-
-    A = np.linalg.matrix_power(B,k)
-    D = np.matmul(A,X) + enoise
-    Xhat = np.matmul(np.linalg.inv(A), D)
-
-    return A, D, Xhat 
-
+# plot condition values
 def plot_conditions(cnumbers, cmax):
 
     # Log Plot of conditions
     plt.figure()
-    plt.title(f'Condition of $A^k$ for k=1:{cmax}, log scale')
+    plt.title(f'Condition of $B^k$ for k=1:{cmax}, log scale')
     plt.yscale('log')
     plt.xlim((1,cmax))
     plt.xticks(np.arange(1,cmax+1,2))
@@ -47,7 +31,7 @@ def plot_conditions(cnumbers, cmax):
 
     # Linear Plot of conditions
     plt.figure()
-    plt.title(f'Condition of $A^k$ for k=1:{cmax}, linear scale')
+    plt.title(f'Condition of $B^k$ for k=1:{cmax}, linear scale')
     plt.xlim((1,cmax))
     plt.xticks(np.arange(1,cmax+1,2))
     plt.xlabel('k')
@@ -57,6 +41,8 @@ def plot_conditions(cnumbers, cmax):
 
     plt.show()
 
+
+# plot absolute and relative errors
 def plot_errors(abs_errors, rel_errors, cmax):
 
     # Log Plot of conditions
@@ -83,13 +69,47 @@ def plot_errors(abs_errors, rel_errors, cmax):
 
     plt.show()
 
-def blur_image(X, B, enoise):
 
-    cmax = 20 
+# display an image matrix on screen
+def show_img(img, title=None):
+   
+    print(f'Image dimensions are {img.shape}')
+    plt.xticks([])
+    plt.yticks([])
+    plt.title(title)
+    plt.imshow(img, cmap='gray')
+    plt.show()
+
+
+# create diffusion matrix n x m
+def diffusion_matrix(L, n, m):
+
+    # make matrix tridiagonal 
+    # 1-2*L as diagonal and L above and below diagonal
+    return diags([L, 1-2*L, L], [-1, 0, 1], shape = (n,m)).toarray()
+
+
+# create matrix of noise n x m   
+def noise_matrix(n, m, mean=0, stddev=1):
+    return  0.01 * np.random.normal(mean, stddev, size=(n,m))
+
+
+def blur(X, B, k, enoise):
+
+    A = np.linalg.matrix_power(B,k)         # diffusion matrix B^k
+    D = np.matmul(A,X) + enoise             # blurred image
+    Xhat = np.matmul(np.linalg.inv(A), D)   # reconstructed image
+
+    return A, D, Xhat 
+
+
+def blur_image(X, B, enoise, cmax):
+
     cnumbers = []
     abs_errors = []
     rel_errors = []
 
+    # blur image with B^kX+noise for k=1:cmax
     for k in range(1, cmax+1):
         A, D, Xhat = blur(X, B, k, enoise)
         cnumbers.append(np.linalg.cond(A))
@@ -97,59 +117,41 @@ def blur_image(X, B, enoise):
         abs_errors.append(abs_error)
         rel_errors.append(abs_error/np.linalg.norm(X))
 
-    #plot_conditions(cnumbers, cmax)
+        # show reconstructions
+        if k in [1,5,20]:
+            title = f'Reconstruction of image for k={k}' 
+            show_img(Xhat, title)
+
+    # plotting functions
+    plot_conditions(cnumbers, cmax)
     plot_errors(abs_errors, rel_errors, cmax)
         
         
 def main():
 
+    # open image
     imgFile = 'clown1.jpg'
     X = cv2.imread(imgFile,0)
 
-    #show_img(X)
+    # display image
+    show_img(X, 'Original Picture')
 
-    n, m = X.shape
-    L = 0.1
-    
-    B = diffusion_matrix(L, n, n)
+    n, m = X.shape  # dims of image
+    L = 0.1         # diagonal val for blurring matrix
    
-    enoise = noise_matrix(n, m)
+    # create blurring matrix 
+    B = diffusion_matrix(L, n, n)
+  
+    # create noise matrix 
+    enoise = noise_matrix(n, m, stddev=1)
 
-    blur_image(X, B, enoise)
+    # blur image
+    cmax = 20 
+    blur_image(X, B, enoise, cmax)
+
     return 0
 
 
 if __name__ == '__main__':
     sys.exit(main())
 
-
-
-
-#
-#X-Xhat = error
-#plot(cnumber)
-#plt(log10(cnumber))
-#
-#
-## In[ ]:
-#
-#
-##SVD
-#A=USVtranspose = s11+U1V1transpose+s22U2V2tranpose+...
-#
-#S is diagonal
-#U and V are orthogonal
-#
-#A is mxn
-#U is mxm
-#Vtranspose is nxn
-#
-#
-## In[83]:
-#
-#
-#print(A.shape)
-#U, S, V = np.linalg.svd(A)
-#print(U.shape, S.shape, V.shape)
-#print(S)
-#
