@@ -97,7 +97,7 @@ def diffusion_matrix(L, n, m):
 
 # create matrix of noise n x m   
 def noise_matrix(n, m, mean=0, stddev=1):
-    return  0.01 * np.random.normal(mean, stddev, size=(n,m))
+    return  np.random.normal(mean, stddev, size=(n,m))
 
 
 def blur(X, B, k, enoise):
@@ -149,14 +149,14 @@ def main():
     # create blurring matrix 
     B = diffusion_matrix(L, n, n)
   
-    # create noise matrix with standard deviation of 1
-    enoise = noise_matrix(n, m, stddev=1)
+    # create noise matrix with standard deviation of 0.01
+    enoise = noise_matrix(n, m, stddev=0.01)
 
     # blur image
     blur_image(X, B, enoise, cmax)
 
-    # create noise matrix with standard deviation of .1
-    enoise = noise_matrix(n, m, stddev=.1)
+    # create noise matrix with standard deviation of 0.1
+    enoise = noise_matrix(n, m, stddev=0.1)
 
     # blur image
     blur_image(X, B, enoise, cmax)
