@@ -18,26 +18,29 @@ import matplotlib.pyplot as plt
 # plot condition values
 def plot_conditions(cnumbers, cmax):
 
+    xvals = np.arange(1,cmax+1)
+    xticks = np.arange(0,cmax+1,2)
+
     # Log Plot of conditions
     plt.figure()
     plt.title(f'Condition of $B^k$ for k=1:{cmax}, log scale')
     plt.yscale('log')
     plt.xlim((1,cmax))
-    plt.xticks(np.arange(1,cmax+1,2))
+    plt.xticks(xticks)
     plt.xlabel('k')
     plt.ylabel('condition')
     plt.grid()
-    plt.plot(cnumbers)
+    plt.plot(xvals, cnumbers)
 
     # Linear Plot of conditions
     plt.figure()
     plt.title(f'Condition of $B^k$ for k=1:{cmax}, linear scale')
     plt.xlim((1,cmax))
-    plt.xticks(np.arange(1,cmax+1,2))
+    plt.xticks(xticks)
     plt.xlabel('k')
     plt.ylabel('condition')
     plt.grid()
-    plt.plot(cnumbers)
+    plt.plot(xvals, cnumbers)
 
     plt.show()
 
@@ -45,27 +48,30 @@ def plot_conditions(cnumbers, cmax):
 # plot absolute and relative errors
 def plot_errors(abs_errors, rel_errors, cmax):
 
+    xvals = np.arange(1,cmax+1)
+    xticks = np.arange(0,cmax+1,2)
+
     # Log Plot of conditions
     plt.figure()
     plt.title(f'Absolute Errors of $\hat{{X}}$ for k=1:{cmax}, log scale base 10')
     plt.yscale('log', basey=10)
-    plt.xlim((1,cmax))
-    plt.xticks(np.arange(1,cmax+1,2))
+    plt.xlim((1,cmax+1))
+    plt.xticks(xticks)
     plt.xlabel('k')
     plt.ylabel('Error')
     plt.grid()
-    plt.plot(abs_errors)
+    plt.plot(xvals, abs_errors)
 
     # Linear Plot of conditions
     plt.figure()
     plt.title(f'Relative Errors of $\hat{{X}}$ for k=1:{cmax}, log scale base 10')
     plt.yscale('log', basey=10)
-    plt.xlim((1,cmax))
-    plt.xticks(np.arange(1,cmax+1,2))
+    plt.xlim((1,cmax+1))
+    plt.xticks(xticks)
     plt.xlabel('k')
     plt.ylabel('Error')
     plt.grid()
-    plt.plot(rel_errors)
+    plt.plot(xvals, rel_errors)
 
     plt.show()
 
@@ -138,15 +144,21 @@ def main():
 
     n, m = X.shape  # dims of image
     L = 0.1         # diagonal val for blurring matrix
+    cmax = 20       # number of power to raise blurring matrix by
    
     # create blurring matrix 
     B = diffusion_matrix(L, n, n)
   
-    # create noise matrix 
+    # create noise matrix with standard deviation of 1
     enoise = noise_matrix(n, m, stddev=1)
 
     # blur image
-    cmax = 20 
+    blur_image(X, B, enoise, cmax)
+
+    # create noise matrix with standard deviation of .1
+    enoise = noise_matrix(n, m, stddev=.1)
+
+    # blur image
     blur_image(X, B, enoise, cmax)
 
     return 0
