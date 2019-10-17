@@ -13,6 +13,7 @@ import sys
 import cv2
 import numpy as np
 from scipy.sparse import diags
+from sklearn.decomposition import TuncatedSVD
 import matplotlib.pyplot as plt
 
 
@@ -146,14 +147,50 @@ def tk_lambda(A, Dhat):
     pass
 
 
-def regularize(A, D, method, p):
-    pass
+def solve(U, S, V, dhat, p):
+    #print(f'S{S.shape[0]}')
+    xhat = np.zeros((128))
+    #print(f'pre-xhat {xhat.shape}')
+    #print(f'xtrunc {xtrunc.shape}')
+    #print(f'U{U.shape}, V{V.shape}')
+    for i in range(p):
+        #print(f'xtrunc {xtrunc.shape}')
+        xi = (np.dot(U[:,i].T, dhat)/S[i]) * V[:,i]
+        xhat = np.add(xhat, xi)
+        #print(xhat)
+        #print(f'xtrunc {xtrunc.shape}')
+
+    #print(f'xtrunc {xtrunc.shape}')
+    #print(xtrunc)
+    #print(f'post-xhat {xhat.shape}')
+
+    return np.expand_dims(xhat, axis=1) 
+
+    
+def regularize(A, Dhat, method, p):
+    
+    U, S, V = np.linalg.svd(A)
+    m = A.shape[0]               # number of rows
+    print(f'U{U.shape}, S{S.shape}, V{V.shape}')
+    Xhat = np.empty((m,0))
+
+    for i in range(m):
+        dhat = Dhat[:,i]
+        xhat = solve(U, S, V, dhat, p)
+
+        Xhat = np.hstack((Xhat, xhat)) 
+        #print(f'Xhat {Xhat.shape}')
+
+    print(f'Xhat: {Xhat.shape}')
+    show_img(Xhat)
+
+    return 0
 
 
 def de_blur(A, Dhat, method):
     if method is 'TSVD':
-        print('Regularizing with Truncated Singular Valute Decomposition')
-        p = tsvd_index(A, Dhat) 
+        print('Regularizing with Truncated Singular Value Decomposition')
+        p = A.shape[0] 
     elif method is 'TK':
         print('Regularizing with Tikhonov Regularization')
         p = tk_lambda(A, Dhat)
@@ -185,8 +222,8 @@ def main():
     Xhat = de_blur(A, Dhat, method)
 
     # regularization 
-    method = 'TK'
-    Xhat = de_blur(A, Dhat, method)
+    #method = 'TK'
+    #Xhat = de_blur(A, Dhat, method)
 
     return 0
 
