@@ -25,7 +25,7 @@ def show_img(img, title=None):
     plt.title(title)
     plt.imshow(img, cmap='gray')
     plt.draw()
-    plt.pause(0.1)
+    plt.pause(0.01)
 
 
 # create diffusion matrix n x m
@@ -43,15 +43,26 @@ def tk_lambda(A, Dhat):
     pass
 
 
-def solve(U, S, V, dhat, k):
+def solve(U, S, V, dhat, p, method):
     #print(f'S{S.shape[0]}')
+    fltr = 1.0
     xhat = np.zeros((128))
     #print(f'pre-xhat {xhat.shape}')
     #print(f'xtrunc {xtrunc.shape}')
     #print(f'U{U.shape}, V{V.shape}')
-    for i in range(k):
+    
+    if method is 'TK':
+        n = S.shape[0]  # use all singular values
+    else:
+        n = p           # truncate singular values
+
+    for i in range(n):
+        # determine filter factor based on method
+        if method is 'TK':
+            fltr = S[i]**2/(S[i]**2 + p**2) 
+
         #print(f'xtrunc {xtrunc.shape}')
-        xi = (np.dot(U[:,i].T, dhat)/S[i]) * V[:,i]
+        xi = fltr * (np.dot(U[:,i].T, dhat)/S[i]) * V[:,i]
         xhat = np.add(xhat, xi)
         #print(xhat)
         #print(f'xtrunc {xtrunc.shape}')
@@ -63,38 +74,44 @@ def solve(U, S, V, dhat, k):
     return np.expand_dims(xhat, axis=1) 
 
     
-def regularize(A, Dhat, method, pmax):
-    
+def regularize(A, Dhat, method, p):
+   
     U, S, Vt = np.linalg.svd(A)
     m = A.shape[0]               # number of rows
-    print(f'U{U.shape}, S{S.shape}, V{Vt.shape}')
+    #print(f'U{U.shape}, S{S.shape}, V{Vt.shape}')
 
-    for p in range(pmax):
-        Xhat = np.empty((m,0))
-        for i in range(m):
-            dhat = Dhat[:,i]
-            xhat = solve(U, S, Vt.T, dhat, p) 
+    Xhat = np.empty((m,0))
 
-            Xhat = np.hstack((Xhat, xhat)) 
-            #print(f'Xhat {Xhat.shape}')
+    for i in range(m):
+        dhat = Dhat[:,i]
 
-        print(f'Xhat: {Xhat.shape}')
+        xhat = solve(U, S, Vt.T, dhat, p, method) 
+
+        Xhat = np.hstack((Xhat, xhat)) 
+        #print(f'Xhat {Xhat.shape}')
+
+    if method is 'TSVD':
         show_img(Xhat, title=f'k={p}')
+    else:
+        show_img(Xhat, title=f'λ={p}')
 
     return 0
 
 
 def de_blur(A, Dhat, method):
+    n = A.shape[0] 
     if method is 'TSVD':
         print('Regularizing with Truncated Singular Value Decomposition')
-        p = A.shape[0] 
+        for k in range(n):  # try all truncation values to find best fit
+            regularize(A, Dhat, method, k)
     elif method is 'TK':
         print('Regularizing with Tikhonov Regularization')
-        p = tk_lambda(A, Dhat)
+        for Lambda in reversed(range(n)):  # try all truncation values to find best fit
+            regularize(A, Dhat, method, Lambda)
     else:
         sys.exit('Unknown method') 
 
-    return regularize(A, Dhat, method, p)
+    #return regularize(A, Dhat, method, p)
 
 
 def main():
@@ -115,12 +132,12 @@ def main():
     A = np.linalg.matrix_power(B,blur_op_power)  # diffusion matrix B^k
   
     # regularization 
-    method = 'TSVD'
-    Xhat = de_blur(A, Dhat, method)
+    #method = 'TSVD'
+    #de_blur(A, Dhat, method)
 
     # regularization 
-    #method = 'TK'
-    #Xhat = de_blur(A, Dhat, method)
+    method = 'TK'
+    de_blur(A, Dhat, method)
 
     return 0
 
