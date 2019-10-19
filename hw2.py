@@ -13,69 +13,7 @@ import sys
 import cv2
 import numpy as np
 from scipy.sparse import diags
-from sklearn.decomposition import TuncatedSVD
 import matplotlib.pyplot as plt
-
-
-# plot condition values
-def plot_conditions(cnumbers, cmax):
-
-    xvals = np.arange(1,cmax+1)
-    xticks = np.arange(0,cmax+1,2)
-
-    # Log Plot of conditions
-    plt.figure()
-    plt.title(f'Condition of $B^k$ for k=1:{cmax}, log scale')
-    plt.yscale('log')
-    plt.xlim((1,cmax))
-    plt.xticks(xticks)
-    plt.xlabel('k')
-    plt.ylabel('condition')
-    plt.grid()
-    plt.plot(xvals, cnumbers)
-
-    # Linear Plot of conditions
-    plt.figure()
-    plt.title(f'Condition of $B^k$ for k=1:{cmax}, linear scale')
-    plt.xlim((1,cmax))
-    plt.xticks(xticks)
-    plt.xlabel('k')
-    plt.ylabel('condition')
-    plt.grid()
-    plt.plot(xvals, cnumbers)
-
-    plt.show()
-
-
-# plot absolute and relative errors
-def plot_errors(abs_errors, rel_errors, cmax):
-
-    xvals = np.arange(1,cmax+1)
-    xticks = np.arange(0,cmax+1,2)
-
-    # Log Plot of conditions
-    plt.figure()
-    plt.title(f'Absolute Errors of $\hat{{X}}$ for k=1:{cmax}, log scale base 10')
-    plt.yscale('log', basey=10)
-    plt.xlim((1,cmax+1))
-    plt.xticks(xticks)
-    plt.xlabel('k')
-    plt.ylabel('Error')
-    plt.grid()
-    plt.plot(xvals, abs_errors)
-
-    # Linear Plot of conditions
-    plt.figure()
-    plt.title(f'Relative Errors of $\hat{{X}}$ for k=1:{cmax}, log scale base 10')
-    plt.yscale('log', basey=10)
-    plt.xlim((1,cmax+1))
-    plt.xticks(xticks)
-    plt.xlabel('k')
-    plt.ylabel('Error')
-    plt.grid()
-    plt.plot(xvals, rel_errors)
-
-    plt.show()
 
 
 # display an image matrix on screen
@@ -86,7 +24,8 @@ def show_img(img, title=None):
     plt.yticks([])
     plt.title(title)
     plt.imshow(img, cmap='gray')
-    plt.show()
+    plt.draw()
+    plt.pause(0.1)
 
 
 # create diffusion matrix n x m
@@ -97,63 +36,20 @@ def diffusion_matrix(L, n, m):
     return diags([L, 1-2*L, L], [-1, 0, 1], shape = (n,m)).toarray()
 
 
-# create matrix of noise n x m   
-def noise_matrix(n, m, mean=0, stddev=1):
-    return  np.random.normal(mean, stddev, size=(n,m))
-
-
-def blur(X, B, k, enoise):
-
-    A = np.linalg.matrix_power(B,k)         # diffusion matrix B^k
-    D = np.matmul(A,X) + enoise             # blurred image
-    Xhat = np.matmul(np.linalg.inv(A), D)   # reconstructed image
-
-    return A, D, Xhat 
-
-
-def blur_image(X, B, enoise, cmax):
-
-    cnumbers = []
-    abs_errors = []
-    rel_errors = []
-
-    # blur image with B^kX+noise for k=1:cmax
-    for k in range(1, cmax+1):
-        A, D, Xhat = blur(X, B, k, enoise)
-        cnumbers.append(np.linalg.cond(A))
-        abs_error = np.linalg.norm(X-Xhat)
-        abs_errors.append(abs_error)
-        rel_errors.append(abs_error/np.linalg.norm(X))
-
-        # show reconstructions
-        if k in [1,5,20]:
-            title = f'Reconstruction of image for k={k}' 
-            show_img(Xhat, title)
-
-    # plotting functions
-    plot_conditions(cnumbers, cmax)
-    plot_errors(abs_errors, rel_errors, cmax)
-
-
 def tsvd_index(A, Dhat):
-    
-    U, S, V = np.linalg.svd(A)
-
-    print(f'U {U.shape}, S {S.shape}, v {V.shape}')
-
-    return 0
+    pass
 
 def tk_lambda(A, Dhat):
     pass
 
 
-def solve(U, S, V, dhat, p):
+def solve(U, S, V, dhat, k):
     #print(f'S{S.shape[0]}')
     xhat = np.zeros((128))
     #print(f'pre-xhat {xhat.shape}')
     #print(f'xtrunc {xtrunc.shape}')
     #print(f'U{U.shape}, V{V.shape}')
-    for i in range(p):
+    for i in range(k):
         #print(f'xtrunc {xtrunc.shape}')
         xi = (np.dot(U[:,i].T, dhat)/S[i]) * V[:,i]
         xhat = np.add(xhat, xi)
@@ -167,22 +63,23 @@ def solve(U, S, V, dhat, p):
     return np.expand_dims(xhat, axis=1) 
 
     
-def regularize(A, Dhat, method, p):
+def regularize(A, Dhat, method, pmax):
     
-    U, S, V = np.linalg.svd(A)
+    U, S, Vt = np.linalg.svd(A)
     m = A.shape[0]               # number of rows
-    print(f'U{U.shape}, S{S.shape}, V{V.shape}')
-    Xhat = np.empty((m,0))
+    print(f'U{U.shape}, S{S.shape}, V{Vt.shape}')
 
-    for i in range(m):
-        dhat = Dhat[:,i]
-        xhat = solve(U, S, V, dhat, p)
+    for p in range(pmax):
+        Xhat = np.empty((m,0))
+        for i in range(m):
+            dhat = Dhat[:,i]
+            xhat = solve(U, S, Vt.T, dhat, p) 
 
-        Xhat = np.hstack((Xhat, xhat)) 
-        #print(f'Xhat {Xhat.shape}')
+            Xhat = np.hstack((Xhat, xhat)) 
+            #print(f'Xhat {Xhat.shape}')
 
-    print(f'Xhat: {Xhat.shape}')
-    show_img(Xhat)
+        print(f'Xhat: {Xhat.shape}')
+        show_img(Xhat, title=f'k={p}')
 
     return 0
 
