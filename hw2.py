@@ -25,7 +25,7 @@ def show_img(img, title=None):
     plt.title(title)
     plt.imshow(img, cmap='gray')
     plt.draw()
-    plt.pause(0.01)
+    plt.pause(1.01)
 
 
 # create diffusion matrix n x m
@@ -116,9 +116,9 @@ def de_blur(A, Dhat, method):
 
 def load_data_m(dataFile):
     Dhat = []
-    data = open(dataFile, 'r').readlines()
-    for row in data:
-        Dhat.append([float(val) for val in row.split()])
+    with open(dataFile, 'r') as data:
+        for row in data.readlines():
+            Dhat.append([float(val) for val in row.split()])
 
     return np.array(Dhat)
 
