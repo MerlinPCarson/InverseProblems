@@ -114,11 +114,25 @@ def de_blur(A, Dhat, method):
     #return regularize(A, Dhat, method, p)
 
 
+def load_data_m(dataFile):
+    Dhat = []
+    data = open(dataFile, 'r').readlines()
+    for row in data:
+        Dhat.append([float(val) for val in row.split()])
+
+    return np.array(Dhat)
+
+
 def main():
 
     # open image
     imgFile = 'hw2blur.jpg'
-    Dhat = cv2.imread(imgFile,0)
+    dataFile = 'hw2data.m'
+    #Dhat = cv2.imread(imgFile,0)
+
+    Dhat = load_data_m(dataFile) 
+    #print(Dhat.shape)
+    #print(Dhat)
 
     # display image
     show_img(Dhat, 'Original Picture')
@@ -132,12 +146,12 @@ def main():
     A = np.linalg.matrix_power(B,blur_op_power)  # diffusion matrix B^k
   
     # regularization 
-    #method = 'TSVD'
-    #de_blur(A, Dhat, method)
+    method = 'TSVD'
+    de_blur(A, Dhat, method)
 
     # regularization 
-    method = 'TK'
-    de_blur(A, Dhat, method)
+    #method = 'TK'
+    #de_blur(A, Dhat, method)
 
     return 0
 
