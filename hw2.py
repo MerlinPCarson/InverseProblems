@@ -17,15 +17,18 @@ import matplotlib.pyplot as plt
 
 
 # display an image matrix on screen
-def show_img(img, title=None):
+def show_img(img, title=None, pause=True):
    
     print(f'Image dimensions are {img.shape}')
     plt.xticks([])
     plt.yticks([])
     plt.title(title)
     plt.imshow(img, cmap='gray')
-    plt.draw()
-    plt.pause(1.01)
+    if pause:
+        plt.show()
+    else:
+        plt.draw()
+        plt.pause(0.01)
 
 
 # create diffusion matrix n x m
@@ -90,24 +93,21 @@ def regularize(A, Dhat, method, p):
         Xhat = np.hstack((Xhat, xhat)) 
         #print(f'Xhat {Xhat.shape}')
 
-    if method is 'TSVD':
-        show_img(Xhat, title=f'k={p}')
-    else:
-        show_img(Xhat, title=f'λ={p}')
-
-    return 0
+    return Xhat 
 
 
 def de_blur(A, Dhat, method):
     n = A.shape[0] 
     if method is 'TSVD':
         print('Regularizing with Truncated Singular Value Decomposition')
-        for k in range(n):  # try all truncation values to find best fit
-            regularize(A, Dhat, method, k)
+        for k in range(75,n):  # try all truncation values to find best fit
+            Xhat = regularize(A, Dhat, method, k)
+            show_img(Xhat, title=f'k={k}', pause=False)
     elif method is 'TK':
         print('Regularizing with Tikhonov Regularization')
         for Lambda in reversed(range(n)):  # try all truncation values to find best fit
-            regularize(A, Dhat, method, Lambda)
+            Xhat = regularize(A, Dhat, method, Lambda)
+            show_img(Xhat, title=f'λ={Lambda}', pause=False)
     else:
         sys.exit('Unknown method') 
 
@@ -147,10 +147,16 @@ def main():
   
     # regularization 
     method = 'TSVD'
-    de_blur(A, Dhat, method)
+    k=100
+    Xhat = regularize(A, Dhat, method, k)
+    show_img(Xhat, title=f'k={k}', pause=True)
+    #de_blur(A, Dhat, method)
 
     # regularization 
-    #method = 'TK'
+    method = 'TK'
+    Lambda=0.000005
+    Xhat = regularize(A, Dhat, method, Lambda)
+    show_img(Xhat, title=f'λ={Lambda}', pause=True)
     #de_blur(A, Dhat, method)
 
     return 0
