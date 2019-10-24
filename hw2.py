@@ -3,7 +3,7 @@
 
 ###################################################
 # Script for de-blurring an image                 #
-# uses TSVD and Tikonov regularization            #
+# uses TSVD and Tikhonov regularization            #
 #                                                 #
 # Author: Merlin Carson                           #
 # Date: Oct-16-2019                               #
@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 from scipy.sparse import diags
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 # display an image matrix on screen
@@ -31,6 +32,17 @@ def show_img(img, title=None, pause=True):
         plt.pause(0.01)
 
 
+def plot_l_curve(norms, residuals):
+
+    plt.figure()
+    plt.title(f'L-Curve')
+    plt.ylabel('$||X_λ||^2$')
+    plt.xlabel('||$A{X_λ}-\hat{D}$||')
+    plt.grid()
+    plt.plot(residuals, norms)
+    plt.show()
+
+
 # create diffusion matrix n x m
 def diffusion_matrix(L, n, m):
 
@@ -39,20 +51,9 @@ def diffusion_matrix(L, n, m):
     return diags([L, 1-2*L, L], [-1, 0, 1], shape = (n,m)).toarray()
 
 
-def tsvd_index(A, Dhat):
-    pass
-
-def tk_lambda(A, Dhat):
-    pass
-
-
 def solve(U, S, V, dhat, p, method):
-    #print(f'S{S.shape[0]}')
     fltr = 1.0
     xhat = np.zeros((128))
-    #print(f'pre-xhat {xhat.shape}')
-    #print(f'xtrunc {xtrunc.shape}')
-    #print(f'U{U.shape}, V{V.shape}')
     
     if method is 'TK':
         n = S.shape[0]  # use all singular values
@@ -64,15 +65,8 @@ def solve(U, S, V, dhat, p, method):
         if method is 'TK':
             fltr = S[i]**2/(S[i]**2 + p**2) 
 
-        #print(f'xtrunc {xtrunc.shape}')
         xi = fltr * (np.dot(U[:,i].T, dhat)/S[i]) * V[:,i]
         xhat = np.add(xhat, xi)
-        #print(xhat)
-        #print(f'xtrunc {xtrunc.shape}')
-
-    #print(f'xtrunc {xtrunc.shape}')
-    #print(xtrunc)
-    #print(f'post-xhat {xhat.shape}')
 
     return np.expand_dims(xhat, axis=1) 
 
@@ -81,7 +75,6 @@ def regularize(A, Dhat, method, p):
    
     U, S, Vt = np.linalg.svd(A)
     m = A.shape[0]               # number of rows
-    #print(f'U{U.shape}, S{S.shape}, V{Vt.shape}')
 
     Xhat = np.empty((m,0))
 
@@ -91,7 +84,6 @@ def regularize(A, Dhat, method, p):
         xhat = solve(U, S, Vt.T, dhat, p, method) 
 
         Xhat = np.hstack((Xhat, xhat)) 
-        #print(f'Xhat {Xhat.shape}')
 
     return Xhat 
 
@@ -105,13 +97,20 @@ def de_blur(A, Dhat, method):
             show_img(Xhat, title=f'k={k}', pause=False)
     elif method is 'TK':
         print('Regularizing with Tikhonov Regularization')
-        for Lambda in reversed(range(n)):  # try all truncation values to find best fit
+        norms = []
+        residuals = []
+        for Lambda in tqdm(np.arange(0.000001,0.00001,0.000001)):  # try all truncation values to find best fit
             Xhat = regularize(A, Dhat, method, Lambda)
-            show_img(Xhat, title=f'λ={Lambda}', pause=False)
+            norm = np.linalg.norm(Xhat)**2
+            norms.append(norm)
+            res = np.linalg.norm(np.subtract(np.matmul(A,Xhat),Dhat))
+            residuals.append(res)
+            #show_img(Xhat, title=f'λ={Lambda}', pause=False)
+
+        plot_l_curve(norms, residuals)
+
     else:
         sys.exit('Unknown method') 
-
-    #return regularize(A, Dhat, method, p)
 
 
 def load_data_m(dataFile):
@@ -131,8 +130,6 @@ def main():
     #Dhat = cv2.imread(imgFile,0)
 
     Dhat = load_data_m(dataFile) 
-    #print(Dhat.shape)
-    #print(Dhat)
 
     # display image
     show_img(Dhat, 'Original Picture')
@@ -155,9 +152,9 @@ def main():
     # regularization 
     method = 'TK'
     Lambda=0.000005
-    Xhat = regularize(A, Dhat, method, Lambda)
-    show_img(Xhat, title=f'λ={Lambda}', pause=True)
-    #de_blur(A, Dhat, method)
+    #Xhat = regularize(A, Dhat, method, Lambda)
+    #show_img(Xhat, title=f'λ={Lambda}', pause=True)
+    de_blur(A, Dhat, method)
 
     return 0
 
