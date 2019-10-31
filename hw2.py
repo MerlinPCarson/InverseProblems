@@ -90,16 +90,21 @@ def regularize(A, Dhat, method, p):
 
 def de_blur(A, Dhat, method):
     n = A.shape[0] 
+    norms = []
+    residuals = []
     if method is 'TSVD':
         print('Regularizing with Truncated Singular Value Decomposition')
-        for k in range(75,n):  # try all truncation values to find best fit
+        for k in tqdm(range(0,n)):  # try all truncation values to find best fit
             Xhat = regularize(A, Dhat, method, k)
-            show_img(Xhat, title=f'k={k}', pause=False)
+            norm = np.linalg.norm(Xhat)**2
+            norms.append(norm)
+            res = np.linalg.norm(np.subtract(np.matmul(A,Xhat),Dhat))
+            residuals.append(res)
+            #show_img(Xhat, title=f'k={k}', pause=False)
     elif method is 'TK':
         print('Regularizing with Tikhonov Regularization')
-        norms = []
         residuals = []
-        for Lambda in tqdm(np.arange(0.000001,0.00001,0.000001)):  # try all truncation values to find best fit
+        for Lambda in tqdm(np.arange(0.000001,1.0,0.001)):  # try all truncation values to find best fit
             Xhat = regularize(A, Dhat, method, Lambda)
             norm = np.linalg.norm(Xhat)**2
             norms.append(norm)
@@ -107,11 +112,11 @@ def de_blur(A, Dhat, method):
             residuals.append(res)
             #show_img(Xhat, title=f'λ={Lambda}', pause=False)
 
-        plot_l_curve(norms, residuals)
 
     else:
         sys.exit('Unknown method') 
 
+    plot_l_curve(norms, residuals)
 
 def load_data_m(dataFile):
     Dhat = []
@@ -147,14 +152,14 @@ def main():
     k=100
     Xhat = regularize(A, Dhat, method, k)
     show_img(Xhat, title=f'k={k}', pause=True)
-    #de_blur(A, Dhat, method)
+    de_blur(A, Dhat, method)
 
     # regularization 
     method = 'TK'
     Lambda=0.000005
     #Xhat = regularize(A, Dhat, method, Lambda)
     #show_img(Xhat, title=f'λ={Lambda}', pause=True)
-    de_blur(A, Dhat, method)
+    #de_blur(A, Dhat, method)
 
     return 0
 
