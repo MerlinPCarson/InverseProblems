@@ -18,6 +18,10 @@ from scipy.sparse import diags
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+# try
+lambdaL = 0.3 #L1?
+alpha = 0.05
+beta = 0.0001
 
 def plt_error(error1, error2):
 
@@ -85,15 +89,21 @@ def regularize(A, Dhat, method, p):
 
     Xhat = np.empty((m,0))
 
+    L = diags([-1, 1], [0, 1], shape = (m-1,m)).toarray()
     for i in range(n):
         dhat = Dhat[:,i]
 
-        xhat = solve(U, S, Vt.T, dhat, p, method) 
+        #xhat = solve(U, S, Vt.T, dhat, p, method) 
 
+        xhat = tk_general(A, lambdaL, L, dhat)
         Xhat = np.hstack((Xhat, xhat)) 
 
     return Xhat 
 
+def tk_general(A, lambdaL, L, dhat):
+    term1 = np.linalg.inv(np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L))
+    term2 = np.matmul(A.T,dhat)
+    return np.expand_dims(np.matmul(term1,term2), axis=1)
 
 def de_blur(A, X, Dhat, method):
     n = A.shape[0] 
