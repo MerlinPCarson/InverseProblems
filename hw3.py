@@ -17,11 +17,8 @@ import numpy as np
 from scipy.sparse import diags
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import scipy.optimize as opt
 
-# try
-lambdaL = 0.3 #L1?
-alpha = 0.05
-beta = 0.0001
 
 def plt_error(error1, error2):
 
@@ -82,9 +79,8 @@ def solve(U, S, V, dhat, p, method):
     return np.expand_dims(xhat, axis=1) 
 
     
-def regularize(A, Dhat, method, p=0, Lambda=0):
+def regularize(A, Dhat, method, p=0, Lambda=0, alpha=0, beta=0):
    
-    U, S, Vt = np.linalg.svd(A)
     m, n = Dhat.shape               
 
     Xhat = np.empty((m,0))
@@ -97,9 +93,12 @@ def regularize(A, Dhat, method, p=0, Lambda=0):
         dhat = Dhat[:,i]
 
         if method in ['TK', 'TSVD']:
+            U, S, Vt = np.linalg.svd(A)
             xhat = solve(U, S, Vt.T, dhat, p, method) 
         elif method in ['TK-gen']:
             xhat = tk_general(A, Lambda, L2, dhat)
+        elif method in ['TV']:
+            xhat = total_variation(A, alpha, beta, dhat)
         else:
             sys.exit(f'Unknown method {method}')
 
@@ -107,10 +106,31 @@ def regularize(A, Dhat, method, p=0, Lambda=0):
 
     return Xhat 
 
+
 def tk_general(A, lambdaL, L, dhat):
     term1 = np.linalg.inv(np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L))
     term2 = np.matmul(A.T,dhat)
     return np.expand_dims(np.matmul(term1,term2), axis=1)
+
+
+def total_variation(A, alpha, beta, dhat):
+    x0 = np.zeros(dhat.shape)
+    params = (A,alpha,beta,dhat)
+
+    return opt.minimize(J_alpha_beta, x0)
+
+
+def J_alpha_beta(dhat, *params):
+    A, alpha, beta = params[0], params[1], params[2]
+    return np.linalg.norm(np.matmul(A,dhat))**2 + alpha**2 * smoothing_approx(dhat,beta)
+
+
+def smoothing_approx(dhat, beta):
+    T = 0 
+    for i in range(dhat.shape[0]-1):
+        T += np.sqrt(beta**2 + np.abs(dhat[i+1]-dhat[i])**2)
+    return T
+
 
 def de_blur(A, X, Dhat, method):
     n = A.shape[0] 
@@ -198,6 +218,13 @@ def main():
 #    print(np.sum((Xhat-X)**2), np.sum((Xhat2-X)**2))
 #    #show_img(Xhat, title=f'λ={Lambda}', pause=True)
 #    #de_blur(A, Dhat, method)
+
+    method = 'TV'
+    alpha = 0.05
+    beta = 0.0001
+    Xhat = regularize(A, Dhat, method, alpha=alpha, beta=beta)
+    plt_compare(X, Xhat)
+
 
     method = 'TK-gen'
     Lambda =  0.004
