@@ -82,20 +82,27 @@ def solve(U, S, V, dhat, p, method):
     return np.expand_dims(xhat, axis=1) 
 
     
-def regularize(A, Dhat, method, p):
+def regularize(A, Dhat, method, p=0, Lambda=0):
    
     U, S, Vt = np.linalg.svd(A)
     m, n = Dhat.shape               
 
     Xhat = np.empty((m,0))
 
-    L = diags([-1, 1], [0, 1], shape = (m-1,m)).toarray()
+    L = np.eye(m)
+    L1 = diags([-1, 1], [0, 1], shape = (m-1,m)).toarray()
+    L2 = diags([1, -2, 1], [0, 1, 2], shape = (m-2,m)).toarray()
+
     for i in range(n):
         dhat = Dhat[:,i]
 
-        #xhat = solve(U, S, Vt.T, dhat, p, method) 
+        if method in ['TK', 'TSVD']:
+            xhat = solve(U, S, Vt.T, dhat, p, method) 
+        elif method in ['TK-gen']:
+            xhat = tk_general(A, Lambda, L2, dhat)
+        else:
+            sys.exit(f'Unknown method {method}')
 
-        xhat = tk_general(A, lambdaL, L, dhat)
         Xhat = np.hstack((Xhat, xhat)) 
 
     return Xhat 
@@ -168,30 +175,40 @@ def main():
     A = np.linalg.matrix_power(B,blur_op_power)  # diffusion matrix B^k
   
     # regularization 
-    method = 'TSVD'
-    k=124
-    Xhat = regularize(A, Dhat, method, k)
-    k=125
-    Xhat2 = regularize(A, Dhat, method, k)
-    plt_compare(X, Xhat2)
-    plt_error(Xhat-X, Xhat2-X)
-    print(np.sum((Xhat-X)**2), np.sum((Xhat2-X)**2))
-    ##show_img(Xhat, title=f'k={k}', pause=True)
-    #de_blur(A, X, Dhat, method)
+#    method = 'TSVD'
+#    k=124
+#    Xhat = regularize(A, Dhat, method, k)
+#    k=125
+#    Xhat2 = regularize(A, Dhat, method, k)
+#    plt_compare(X, Xhat2)
+#    plt_error(Xhat-X, Xhat2-X)
+#    print(np.sum((Xhat-X)**2), np.sum((Xhat2-X)**2))
+#    ##show_img(Xhat, title=f'k={k}', pause=True)
+#    #de_blur(A, X, Dhat, method)
+#
+#    # regularization 
+#    method = 'TK'
+#    Lambda=0.004
+#    Xhat = regularize(A, Dhat, method, Lambda)
+#    #Best?
+#    Lambda=0.0035
+#    Xhat2 = regularize(A, Dhat, method, Lambda)
+#    plt_compare(X, Xhat)
+#    plt_error(Xhat-X, Xhat2-X)
+#    print(np.sum((Xhat-X)**2), np.sum((Xhat2-X)**2))
+#    #show_img(Xhat, title=f'λ={Lambda}', pause=True)
+#    #de_blur(A, Dhat, method)
 
-    # regularization 
-    method = 'TK'
-    Lambda=0.004
-    Xhat = regularize(A, Dhat, method, Lambda)
-    #Best?
-    Lambda=0.0035
-    Xhat2 = regularize(A, Dhat, method, Lambda)
+    method = 'TK-gen'
+    Lambda =  0.004
+    Xhat = regularize(A, Dhat, method, Lambda=Lambda)
     plt_compare(X, Xhat)
+    Lambda =  0.3
+    Xhat2 = regularize(A, Dhat, method, Lambda=Lambda)
+    plt_compare(X, Xhat2)
+    print(np.sum(np.abs((Xhat-X))), np.sum(np.abs((Xhat2-X))))
     plt_error(Xhat-X, Xhat2-X)
-    print(np.sum((Xhat-X)**2), np.sum((Xhat2-X)**2))
-    #show_img(Xhat, title=f'λ={Lambda}', pause=True)
-    #de_blur(A, Dhat, method)
-
+    #plt_error(Xhat-X)
     return 0
 
 
