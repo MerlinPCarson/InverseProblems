@@ -114,21 +114,24 @@ def tk_general(A, lambdaL, L, dhat):
 
 
 def total_variation(A, alpha, beta, dhat):
-    x0 = np.zeros(dhat.shape)
+    x0 = 0.5 * np.ones(dhat.shape)
     params = (A,alpha,beta,dhat)
 
-    return opt.minimize(J_alpha_beta, x0)
+    output = opt.minimize(J_alpha_beta, x0, args=params)
+    print(output)
+
+    return np.expand_dims(xhat[x], axis=1)
 
 
-def J_alpha_beta(dhat, *params):
-    A, alpha, beta = params[0], params[1], params[2]
-    return np.linalg.norm(np.matmul(A,dhat))**2 + alpha**2 * smoothing_approx(dhat,beta)
+def J_alpha_beta(xhat, *params):
+    A, alpha, beta, dhat = params[0], params[1], params[2], params[3]
+    return np.linalg.norm(A@xhat-dhat)**2 + alpha**2 * smoothing_approx(xhat,beta)
 
 
-def smoothing_approx(dhat, beta):
+def smoothing_approx(xhat, beta):
     T = 0 
-    for i in range(dhat.shape[0]-1):
-        T += np.sqrt(beta**2 + np.abs(dhat[i+1]-dhat[i])**2)
+    for i in range(xhat.shape[0]-1):
+        T += np.sqrt(beta**2 + np.abs(xhat[i+1]-xhat[i])**2)
     return T
 
 
