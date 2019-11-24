@@ -20,16 +20,18 @@ from tqdm import tqdm
 import scipy.optimize as opt
 
 
-def plt_error(error1, error2):
+def plt_error(error1, title=None):
 
+    plt.title(title)
     plt.plot(error1)
-    plt.plot(error2)
+    #plt.plot(error2)
     plt.show()
 
-def plt_compare(data1, data2, title=None, pause=True):
+def plt_compare(data1, data2, data3, title=None, pause=True):
 
     plt.plot(data1)
     plt.plot(data2)
+    #plt.plot(data3)
     plt.title(title)
     if pause:
         plt.show()
@@ -79,15 +81,18 @@ def solve(U, S, V, dhat, p, method):
     return np.expand_dims(xhat, axis=1) 
 
     
-def regularize(A, Dhat, method, p=0, Lambda=0, alpha=0, beta=0):
+def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
    
     m, n = Dhat.shape               
 
     Xhat = np.empty((m,0))
 
-    L = np.eye(m)
-    L1 = diags([-1, 1], [0, 1], shape = (m-1,m)).toarray()
-    L2 = diags([1, -2, 1], [0, 1, 2], shape = (m-2,m)).toarray()
+    if Lop == 0:
+        L = np.eye(m)
+    elif Lop == 1:
+        L = diags([-1, 1], [0, 1], shape = (m-1,m)).toarray()
+    elif Lop == 2:
+        L = diags([1, -2, 1], [0, 1, 2], shape = (m-2,m)).toarray()
 
     for i in range(n):
         dhat = Dhat[:,i]
@@ -96,7 +101,7 @@ def regularize(A, Dhat, method, p=0, Lambda=0, alpha=0, beta=0):
             U, S, Vt = np.linalg.svd(A)
             xhat = solve(U, S, Vt.T, dhat, p, method) 
         elif method in ['TK-gen']:
-            xhat = tk_general(A, Lambda, L2, dhat)
+            xhat = tk_general(A, Lambda, L, dhat)
         elif method in ['TV']:
             xhat = total_variation(A, alpha, beta, dhat)
         else:
@@ -117,10 +122,9 @@ def total_variation(A, alpha, beta, dhat):
     x0 = 0.5 * np.ones(dhat.shape)
     params = (A,alpha,beta,dhat)
 
-    output = opt.minimize(J_alpha_beta, x0, args=params)
-    print(output)
-
-    return np.expand_dims(xhat[x], axis=1)
+    xhat = opt.minimize(J_alpha_beta, x0, args=params)['x']
+    
+    return np.expand_dims(xhat, axis=1)
 
 
 def J_alpha_beta(xhat, *params):
@@ -135,20 +139,21 @@ def smoothing_approx(xhat, beta):
     return T
 
 
-def de_blur(A, X, Dhat, method):
+def de_blur(A, X, Dhat, method, Lop=0):
     n = A.shape[0] 
     norms = []
     residuals = []
-    if method is 'TSVD':
+    if method == 'TSVD':
         print('Regularizing with Truncated Singular Value Decomposition')
         for k in tqdm(range(50,150)):  # try all truncation values to find best fit
-            Xhat = regularize(A, Dhat, method, k)
+            #Xhat = regularize(A, Dhat, method, k)
+            Xhat = regularize(A, Dhat, method, p=k)
             norm = np.linalg.norm(Xhat)
             norms.append(norm)
             res = np.linalg.norm(np.subtract(np.matmul(A,Xhat),Dhat))
             residuals.append(res)
-            plt_compare(Xhat, X, title=f'k={k}', pause=False)
-    elif method is 'TK':
+            #plt_compare(Xhat, X, title=f'k={k}', pause=False)
+    elif method == 'TK':
         print('Regularizing with Tikhonov Regularization')
         residuals = []
         for Lambda in tqdm(np.arange(0.000001,1.0,0.001)):  # try all truncation values to find best fit
@@ -158,6 +163,15 @@ def de_blur(A, X, Dhat, method):
             res = np.linalg.norm(np.subtract(np.matmul(A,Xhat),Dhat))
             residuals.append(res)
             #show_img(Xhat, title=f'λ={Lambda}', pause=False)
+    elif method == 'TK-gen':
+        print('Regularizing with Tikhonov-General Regularization')
+        residuals = []
+        for Lambda in tqdm(np.logspace(-3,0.5,num=300)):  # try all truncation values to find best fit
+            Xhat = regularize(A, Dhat, method, Lop=Lop, Lambda=Lambda)
+            norm = np.linalg.norm(Xhat)
+            norms.append(norm)
+            res = np.linalg.norm(np.subtract(np.matmul(A,Xhat),Dhat))
+            residuals.append(res)
 
 
     else:
@@ -186,7 +200,7 @@ def main():
     X = load_data_m(trueData)
 
     # display Blurred data and True data 
-    plt_compare(Dhat, X)
+    #plt_compare(X, Dhat, title='Original Data vs. Blurred Data' )
 
 
     n, m = Dhat.shape       # dims of image
@@ -198,16 +212,16 @@ def main():
     A = np.linalg.matrix_power(B,blur_op_power)  # diffusion matrix B^k
   
     # regularization 
-#    method = 'TSVD'
+    method = 'TSVD'
 #    k=124
 #    Xhat = regularize(A, Dhat, method, k)
-#    k=125
-#    Xhat2 = regularize(A, Dhat, method, k)
-#    plt_compare(X, Xhat2)
-#    plt_error(Xhat-X, Xhat2-X)
+    k=125
+    Xhat = regularize(A, Dhat, method, p=k)
+    plt_compare(X, Xhat, Xhat, title=f'TSVD with k={k}')
+    plt_error(Xhat-X, title=f'TSVD errors with k={k}')
 #    print(np.sum((Xhat-X)**2), np.sum((Xhat2-X)**2))
 #    ##show_img(Xhat, title=f'k={k}', pause=True)
-#    #de_blur(A, X, Dhat, method)
+    #de_blur(A, X, Dhat, method)
 #
 #    # regularization 
 #    method = 'TK'
@@ -222,26 +236,41 @@ def main():
 #    #show_img(Xhat, title=f'λ={Lambda}', pause=True)
 #    #de_blur(A, Dhat, method)
 
+    # regularization 
+    method = 'TK-gen'
+#    Lambda =  0.004
+#    Xhat = regularize(A, Dhat, method, Lambda=Lambda)
+#    plt_compare(X, Xhat)
+    #de_blur(A, X, Dhat, method, Lop=0)
+    Lambda = 0.2
+    Xhat = regularize(A, Dhat, method, Lop=0, Lambda=Lambda)
+    plt_compare(X, Xhat, Xhat, title= f'Tikhonov-general with L0 operator, λ={Lambda}')
+#    print(np.sum(np.abs((Xhat-X))), np.sum(np.abs((Xhat2-X))))
+    plt_error(Xhat-X, title=f'Tikhonov-general errors with L0, λ={Lambda}')
+    
+    Lambda = 0.55
+    Xhat = regularize(A, Dhat, method, Lop=1, Lambda=Lambda)
+    plt_compare(X, Xhat, Xhat, title= f'Tikhonov-general with L1 operator, λ={Lambda}')
+#    print(np.sum(np.abs((Xhat-X))), np.sum(np.abs((Xhat2-X))))
+    plt_error(Xhat-X, title=f'Tikhonov-general errors with L1 operator, λ={Lambda}')
+    
+    Lambda = 1.0 
+    Xhat = regularize(A, Dhat, method, Lop=2, Lambda=Lambda)
+    plt_compare(X, Xhat, Xhat, title= f'Tikhonov-general with L2 operator, λ={Lambda}')
+#    print(np.sum(np.abs((Xhat-X))), np.sum(np.abs((Xhat2-X))))
+    plt_error(Xhat-X, title=f'Tikhonov-general errors with L2 operator, λ={Lambda}')
+    #plt_error(Xhat-X)
+    
+    # regularization 
     method = 'TV'
     alpha = 0.05
-    beta = 0.0001
+    beta = 0.00001
     Xhat = regularize(A, Dhat, method, alpha=alpha, beta=beta)
-    plt_compare(X, Xhat)
+    plt_compare(X, Xhat, Xhat, title=f'TV with α={alpha}, β={beta}')
+    plt_error(Xhat-X, title=f'TV errors with α={alpha}, β={beta}')
 
-
-    method = 'TK-gen'
-    Lambda =  0.004
-    Xhat = regularize(A, Dhat, method, Lambda=Lambda)
-    plt_compare(X, Xhat)
-    Lambda =  0.3
-    Xhat2 = regularize(A, Dhat, method, Lambda=Lambda)
-    plt_compare(X, Xhat2)
-    print(np.sum(np.abs((Xhat-X))), np.sum(np.abs((Xhat2-X))))
-    plt_error(Xhat-X, Xhat2-X)
-    #plt_error(Xhat-X)
     return 0
 
 
 if __name__ == '__main__':
     sys.exit(main())
-
