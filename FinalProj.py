@@ -41,10 +41,10 @@ def main():
     print(A.shape)
 
     # Regularize
-    method = 'TK-gen'
-    Lambda = 0.1
-    Lop = 1
-    Xhat = hw3.regularize(A, Dhat, method, Lop=Lop, Lambda=Lambda)
+    method = 'TV'
+    alpha = 0.05
+    beta = 0.00001
+    Xhat = hw3.regularize(A, Dhat, method, alpha=alpha, beta=beta)
     plot_data(Xhat)
 
     
