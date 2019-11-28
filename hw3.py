@@ -263,8 +263,8 @@ def main():
     
     # regularization 
     method = 'TV'
-    alpha = 0.05
-    beta = 0.00001
+    alpha = 0.0005
+    beta = 0.000001
     Xhat = regularize(A, Dhat, method, alpha=alpha, beta=beta)
     plt_compare(X, Xhat, Xhat, title=f'TV with α={alpha}, β={beta}')
     plt_error(Xhat-X, title=f'TV errors with α={alpha}, β={beta}')
