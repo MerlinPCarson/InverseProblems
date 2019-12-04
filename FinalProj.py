@@ -27,6 +27,12 @@ def main():
 
     n, m = Dhat.shape
 
+    print(Dhat[:1])
+    print(Dhat[:0])
+    dhat = Dhat[:0]
+    print(dhat)
+    dhat = dhat[dhat>0.0]
+    print(dhat)
     # view data
     plot_data(Dhat)
     #plot_data(mask)

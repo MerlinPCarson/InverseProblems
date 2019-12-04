@@ -94,9 +94,18 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
     elif Lop == 2:
         L = diags([1, -2, 1], [0, 1, 2], shape = (m-2,m)).toarray()
 
-    for i in range(n):
-        dhat = Dhat[:,i]
+    print(A.shape, L.shape, Dhat.shape)
 
+    for i in tqdm(range(n)):
+        dhat = Dhat[:,i]
+        idx = np.where(dhat>0.0)
+        dhat = dhat[idx]
+
+        A = A[idx,:]
+        L = L[idx,:]
+
+        print(A.shape, L.shape, dhat.shape)
+       
         if method in ['TK', 'TSVD']:
             U, S, Vt = np.linalg.svd(A)
             xhat = solve(U, S, Vt.T, dhat, p, method) 
