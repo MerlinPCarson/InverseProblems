@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import numpy.ma as ma
 from scipy.sparse import diags
 import matplotlib.pyplot as plt
 import hw3
@@ -28,8 +29,17 @@ def main():
     n, m = Dhat.shape
 
     # view data
-    plot_data(Dhat)
+    #plot_data(Dhat)
     #plot_data(mask)
+
+    #print(Dhat[:,0])
+    #print(mask[:,0])
+    #indices = np.where(Dhat[:,0]>0.0)
+    #print(indices)
+    #print(Dhat[indices,0].shape)
+
+    
+    #return 0
 
     # Diffusion Matrix 
     s = 0.45
@@ -40,11 +50,15 @@ def main():
     A = np.linalg.matrix_power(B,blur_op_power)  # diffusion matrix B^k
     print(A.shape)
 
+    method = 'TSVD'
+    k=85
+    Xhat = hw3.regularize(A, Dhat, method, p=k)
+    plot_data(Xhat)
+
     # Regularize
-    method = 'TV'
-    alpha = 0.05
-    beta = 0.00001
-    Xhat = hw3.regularize(A, Dhat, method, alpha=alpha, beta=beta)
+    Lambda = 0.02
+    method = 'TK-gen'
+    Xhat = hw3.regularize(A, Dhat, method, Lop=0, Lambda=Lambda)
     plot_data(Xhat)
 
     

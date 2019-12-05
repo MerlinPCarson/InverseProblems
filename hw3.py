@@ -61,10 +61,17 @@ def diffusion_matrix(L, n, m):
     return diags([L, 1-2*L, L], [-1, 0, 1], shape = (n,m)).toarray()
 
 
-def solve(U, S, V, dhat, p, method):
+def solve(U, S, V, dhat, p, method, indices):
     fltr = 1.0
-    xhat = np.zeros((dhat.shape[0]))
+    xhat = np.zeros((V.shape[0]))
+    #print(f'xhat {xhat.shape}')
+    #print(f'U {U.shape}')
+    #print(f'S {S.shape}')
+    #print(f'V {V.shape}')
     
+    #V = V[:, indices]
+    #print(f'V {V.shape}')
+
     if method is 'TK':
         n = S.shape[0]  # use all singular values
     else:
@@ -96,12 +103,23 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
 
     for i in range(n):
         dhat = Dhat[:,i]
+        indices = np.where(dhat>0.0)[0]
+        dhat = dhat[indices]
+        #print(f'dhat shape {dhat.shape}')
+        #print(dhat)
+        Ahat = A[indices,:]
+        #print(f'Ahat shape {Ahat.shape}')
+        #print(Ahat)
+        Lhat = L[indices,:]
+        #print(f'Lhat shape {Lhat.shape}')
+        #print(Lhat)
 
         if method in ['TK', 'TSVD']:
-            U, S, Vt = np.linalg.svd(A)
-            xhat = solve(U, S, Vt.T, dhat, p, method) 
+            U, S, Vt = np.linalg.svd(Ahat)
+            xhat = solve(U, S, Vt.T, dhat, p, method, indices) 
+            #print(f'reg xhat {xhat.shape}')
         elif method in ['TK-gen']:
-            xhat = tk_general(A, Lambda, L, dhat)
+            xhat = tk_general(Ahat, Lambda, Lhat, dhat)
         elif method in ['TV']:
             xhat = total_variation(A, alpha, beta, dhat)
         else:
@@ -114,7 +132,11 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
 
 def tk_general(A, lambdaL, L, dhat):
     term1 = np.linalg.inv(np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L))
+    #term1 = np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L)
     term2 = np.matmul(A.T,dhat)
+    #xhat = np.linalg.lstsq(term1, term2, rcond=-1)
+    #print(xhat)
+    #return np.expand_dims(xhat[0], axis=1)
     return np.expand_dims(np.matmul(term1,term2), axis=1)
 
 
