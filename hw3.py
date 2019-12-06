@@ -119,7 +119,7 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
             xhat = solve(U, S, Vt.T, dhat, p, method, indices) 
             #print(f'reg xhat {xhat.shape}')
         elif method in ['TK-gen']:
-            xhat = tk_general(Ahat, Lambda, Lhat, dhat)
+            xhat = tk_general(Ahat, Lambda, L, dhat)
         elif method in ['TV']:
             xhat = total_variation(A, alpha, beta, dhat)
         else:
@@ -127,16 +127,17 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
 
         Xhat = np.hstack((Xhat, xhat)) 
 
+    Xhat = (Xhat - Xhat.min())/(Xhat.max()-Xhat.min())
     return Xhat 
 
 
 def tk_general(A, lambdaL, L, dhat):
-    term1 = np.linalg.inv(np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L))
-    #term1 = np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L)
+    #term1 = np.linalg.inv(np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L))
+    term1 = np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L)
     term2 = np.matmul(A.T,dhat)
-    #xhat = np.linalg.lstsq(term1, term2, rcond=-1)
+    xhat = np.linalg.lstsq(term1, term2, rcond=-1)
     #print(xhat)
-    #return np.expand_dims(xhat[0], axis=1)
+    return np.expand_dims(xhat[0], axis=1)
     return np.expand_dims(np.matmul(term1,term2), axis=1)
 
 

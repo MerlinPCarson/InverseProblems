@@ -6,6 +6,15 @@ import matplotlib.pyplot as plt
 import hw3
 
 
+def plot_data2(data1, data2, title1=None, title2=None):
+    plt.figure()
+    plt.title(title1)
+    plt.imshow(data1, cmap='gray')
+    plt.figure()
+    plt.title(title2)
+    plt.imshow(data2, cmap='gray')
+    plt.show()
+
 def plot_data(data):
     plt.imshow(data, cmap='gray')
     plt.show()
@@ -51,18 +60,19 @@ def main():
     print(A.shape)
 
     method = 'TSVD'
-    k=85
-    Xhat = hw3.regularize(A, Dhat, method, p=k)
-    plot_data(Xhat)
+    k=80
+    XhatTSVD = hw3.regularize(A, Dhat, method, p=k)
+    #plot_data(XhatTSVD)
 
     # Regularize
-    Lambda = 0.02
+    Lambda = 0.002
     method = 'TK-gen'
-    Xhat = hw3.regularize(A, Dhat, method, Lop=0, Lambda=Lambda)
-    plot_data(Xhat)
+    XhatTK = hw3.regularize(A, Dhat, method, Lop=0, Lambda=Lambda)
+    #plot_data(XhatTK)
 
+    plot_data2(XhatTSVD, XhatTK, title1="TSVD", title2="Tikhonov-General")
     
-     
+    return 0 
 
 
 
