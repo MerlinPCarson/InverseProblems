@@ -65,26 +65,6 @@ def diffusion_matrix(L, n, m):
     return diags([L, 1-2*L, L], [-1, 0, 1], shape = (n,m)).toarray()
 
 
-def solve(U, S, V, dhat, p, method):
-    fltr = 1.0
-    xhat = np.zeros((V.shape[0]))
-
-    if method is 'TK':
-        n = S.shape[0]  # use all singular values
-    else:
-        n = p           # truncate singular values
-
-    for i in range(n):
-        # determine filter factor based on method
-        if method is 'TK':
-            fltr = S[i]**2/(S[i]**2 + p**2) 
-
-        xi = fltr * (np.dot(U[:,i].T, dhat)/S[i]) * V[:,i]
-        xhat = np.add(xhat, xi)
-
-    return np.expand_dims(xhat, axis=1) 
-
-    
 def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0, mask=None):
     m, n = Dhat.shape               
 
@@ -111,12 +91,10 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0, mask=None
             indices = np.where(maskCol==1.0)[0]
             dhat = dhat[indices]
             Ahat = A[indices,:]
-            #Lhat = L[indices,:]
 
         if method in ['TK', 'TSVD']:
             U, S, Vt = np.linalg.svd(Ahat)
             xhat = solve(U, S, Vt.T, dhat, p, method) 
-            #print(f'reg xhat {xhat.shape}')
         elif method in ['TK-gen']:
             xhat = tk_general(Ahat, Lambda, L, dhat)
         elif method in ['TV']:
@@ -126,18 +104,38 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0, mask=None
 
         Xhat = np.hstack((Xhat, xhat)) 
 
-    Xhat = (Xhat - Xhat.min())/(Xhat.max()-Xhat.min())
+    # standardize data to make it displayable
+    if mask is not None:
+        Xhat = (Xhat - Xhat.min())/(Xhat.max()-Xhat.min())
+
     return Xhat 
 
 
+def solve(U, S, V, dhat, p, method):
+    fltr = 1.0
+    xhat = np.zeros((V.shape[0]))
+
+    if method is 'TK':
+        n = S.shape[0]  # use all singular values
+    else:
+        n = p           # truncate singular values
+
+    for i in range(n):
+        # determine filter factor based on method
+        if method is 'TK':
+            fltr = S[i]**2/(S[i]**2 + p**2) 
+
+        xi = fltr * (np.dot(U[:,i].T, dhat)/S[i]) * V[:,i]
+        xhat = np.add(xhat, xi)
+
+    return np.expand_dims(xhat, axis=1) 
+
+
 def tk_general(A, lambdaL, L, dhat):
-    #term1 = np.linalg.inv(np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L))
     term1 = np.matmul(A.T,A)+lambdaL**2*np.matmul(L.T,L)
     term2 = np.matmul(A.T,dhat)
     xhat = np.linalg.lstsq(term1, term2, rcond=-1)
-    #print(xhat)
     return np.expand_dims(xhat[0], axis=1)
-    return np.expand_dims(np.matmul(term1,term2), axis=1)
 
 
 def total_variation(A, alpha, beta, dhat):

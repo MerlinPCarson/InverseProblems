@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-import numpy.ma as ma
 from scipy.sparse import diags
 import matplotlib.pyplot as plt
 import hw3
@@ -9,43 +8,32 @@ import hw3
 def plot_data(data1, data2, title1=None, title2=None):
     plt.figure()
     plt.subplot(2,1,1)
+    plt.xticks([])
+    plt.yticks([])
     plt.title(title1)
     plt.imshow(data1, cmap='gray')
     plt.subplot(2,1,2)
+    plt.xticks([])
+    plt.yticks([])
     plt.title(title2)
     plt.imshow(data2, cmap='gray')
     plt.tight_layout()
     plt.show()
 
-def plot_reg2(data1, data2, title1=None, title2=None):
-    plt.figure()
-    plt.title(title1)
-    plt.imshow(data1, cmap='gray')
-    plt.figure()
-    plt.title(title2)
-    plt.imshow(data2, cmap='gray')
-    plt.show()
 
 def plot_reg(data, title=None):
     plt.title(title)
+    plt.xticks([])
+    plt.yticks([])
     plt.imshow(data, cmap='gray')
     plt.tight_layout()
     plt.show()
 
 
-def load_data_m(dataFile):
-    Dhat = []
-    with open(dataFile, 'r') as data:
-        for row in data.readlines():
-            Dhat.append([float(val) for val in row.split()])
-
-    return np.array(Dhat)
-
-
 def main():
 
-    Dhat = load_data_m('prdata.m')
-    mask = load_data_m('mask.m')
+    Dhat = hw3.load_data_m('prdata.m')
+    mask = hw3.load_data_m('mask.m')
 
     n, m = Dhat.shape
 
@@ -88,13 +76,9 @@ def main():
     XhatTK2 = hw3.regularize(A, Dhat, method, Lop=2, Lambda=Lambda, mask=mask)
     plot_reg(XhatTK2, title=f"Tikhonov-General $L_2$ with λ={Lambda}")
 
-    #plot_reg2(XhatTK2a, XhatTK2b, title1="Tikhonov-General $L_{1}$", title2="Tikhonov-General $L_{2}$")
-    #plot_reg2(XhatTK0, XhatTK1, title1="Tikhonov-General $L_{0}$", title2="Tikhonov-General $L_{1}$")
-    #plot_reg2(XhatTSVD, XhatTK, title1="TSVD", title2="Tikhonov-General")
-    
     return 0 
-
 
 
 if __name__ == '__main__':
     sys.exit(main())
+
