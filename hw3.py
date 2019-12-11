@@ -9,6 +9,10 @@
 #                                                 #
 # Author: Merlin Carson                           #
 # Date: Oct-30-2019                               #
+#                                                 #
+# Modified Dec-10-2019                            #
+# added mask option to TVSD and TK-gen for        #
+# regularizing with missing data                  #
 ###################################################
 
 import sys
@@ -61,16 +65,9 @@ def diffusion_matrix(L, n, m):
     return diags([L, 1-2*L, L], [-1, 0, 1], shape = (n,m)).toarray()
 
 
-def solve(U, S, V, dhat, p, method, indices):
+def solve(U, S, V, dhat, p, method):
     fltr = 1.0
     xhat = np.zeros((V.shape[0]))
-    #print(f'xhat {xhat.shape}')
-    #print(f'U {U.shape}')
-    #print(f'S {S.shape}')
-    #print(f'V {V.shape}')
-    
-    #V = V[:, indices]
-    #print(f'V {V.shape}')
 
     if method is 'TK':
         n = S.shape[0]  # use all singular values
@@ -88,8 +85,7 @@ def solve(U, S, V, dhat, p, method, indices):
     return np.expand_dims(xhat, axis=1) 
 
     
-def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
-   
+def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0, mask=None):
     m, n = Dhat.shape               
 
     Xhat = np.empty((m,0))
@@ -101,22 +97,25 @@ def regularize(A, Dhat, method, Lop=0, p=0, Lambda=0, alpha=0, beta=0):
     elif Lop == 2:
         L = diags([1, -2, 1], [0, 1, 2], shape = (m-2,m)).toarray()
 
+    # use Ahat so function call works with and without mask
+    Ahat = A
+
+    # for each column
     for i in range(n):
+
+        # column of data to regularize
         dhat = Dhat[:,i]
-        indices = np.where(dhat>0.0)[0]
-        dhat = dhat[indices]
-        #print(f'dhat shape {dhat.shape}')
-        #print(dhat)
-        Ahat = A[indices,:]
-        #print(f'Ahat shape {Ahat.shape}')
-        #print(Ahat)
-        Lhat = L[indices,:]
-        #print(f'Lhat shape {Lhat.shape}')
-        #print(Lhat)
+
+        if mask is not None:
+            maskCol = mask[:,i]
+            indices = np.where(maskCol==1.0)[0]
+            dhat = dhat[indices]
+            Ahat = A[indices,:]
+            #Lhat = L[indices,:]
 
         if method in ['TK', 'TSVD']:
             U, S, Vt = np.linalg.svd(Ahat)
-            xhat = solve(U, S, Vt.T, dhat, p, method, indices) 
+            xhat = solve(U, S, Vt.T, dhat, p, method) 
             #print(f'reg xhat {xhat.shape}')
         elif method in ['TK-gen']:
             xhat = tk_general(Ahat, Lambda, L, dhat)
